@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroFocus AI</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0d0f1a;
+    --surface: #141828;
+    --card:    #1a1f35;
+    --border:  #252a45;
+    --accent:  #6c63ff;
+    --green:   #22d68a;
+    --yellow:  #f5c842;
+    --red:     #f05a7e;
+    --blue:    #4fc3f7;
+    --text:    #e8eaf6;
+    --muted:   #6b7280;
+    --radius:  14px;
+    --rsm:     8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.2rem; font-weight: 700;
+  }
+  .logo .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green); animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 99px;
+    font-size: .82rem; font-weight: 600;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .status-badge .indicator { width: 8px; height: 8px; border-radius: 50%; }
+
+  #btn-stop {
+    padding: 7px 18px; border: none; border-radius: 99px;
+    background: #f05a7e; color: #fff; font-weight: 700;
+    font-size: .82rem; cursor: pointer; letter-spacing: .4px;
+    opacity: .4; pointer-events: none; transition: all .3s;
+  }
+
+  /* ── Layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    padding: 20px 28px;
+    flex: 1;
+    max-width: 1300px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── Video ── */
+  .video-wrap {
+    position: relative; background: #000;
+    border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border);
+    aspect-ratio: 4/3;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #webcam-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  .video-placeholder { text-align: center; color: var(--muted); }
+  .video-placeholder .big { font-size: 3rem; margin-bottom: 10px; }
+
+  .vid-top {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 14px 18px; display: none;
+    align-items: center; gap: 10px;
+    background: linear-gradient(to bottom, rgba(0,0,0,.7), transparent);
+  }
+  #state-label-video { font-size: 1.1rem; font-weight: 700; transition: color .4s; }
+
+  .vid-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 12px 18px 14px; display: none;
+    background: linear-gradient(to top, rgba(0,0,0,.75), transparent);
+  }
+  .score-bar-label { font-size: .75rem; color: rgba(255,255,255,.7); margin-bottom: 4px; }
+  .score-bar-track { height: 8px; background: rgba(255,255,255,.12); border-radius: 99px; overflow: hidden; }
+  .score-bar-fill  { height: 100%; border-radius: 99px; transition: width .6s, background .4s; }
+
+  /* ── Sidebar ── */
+  .sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px;
+  }
+  .card-title {
+    font-size: .7rem; font-weight: 700; letter-spacing: 1.2px;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 14px;
+  }
+
+  /* Score ring */
+  .score-ring-wrap { display: flex; align-items: center; gap: 18px; }
+  circle.bg { fill: none; stroke: var(--border); stroke-width: 8; }
+  circle.fg {
+    fill: none; stroke-width: 8; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 50% 50%;
+    transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1), stroke .4s;
+  }
+  .score-number { font-size: 2.4rem; font-weight: 800; line-height: 1; transition: color .4s; }
+  .score-sublabel { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+  .score-desc { font-size: .82rem; margin-top: 8px; font-weight: 500; }
+
+  /* Metric rows */
+  .metric-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .metric-row:last-child { margin-bottom: 0; }
+  .metric-label { font-size: .8rem; color: var(--muted); }
+  .metric-val   { font-size: .88rem; font-weight: 600; }
+  .mini-bar-wrap { flex: 1; margin: 0 12px; }
+  .mini-bar-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .mini-bar-fill  { height: 100%; border-radius: 99px; transition: width .5s; }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: .72rem; font-weight: 600; }
+  .tag-green  { background: rgba(34,214,138,.15); color: var(--green); }
+  .tag-red    { background: rgba(240,90,126,.15);  color: var(--red);   }
+  .tag-yellow { background: rgba(245,200,66,.15);  color: var(--yellow);}
+  .tag-muted  { background: rgba(107,114,128,.15); color: var(--muted); }
+
+  /* Session bars */
+  .session-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .session-item:last-child { margin-bottom: 0; }
+  .session-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .session-info { flex: 1; }
+  .session-name { font-size: .78rem; font-weight: 600; }
+  .session-bar-track { height: 4px; background: var(--border); border-radius: 99px; margin-top: 4px; overflow: hidden; }
+  .session-bar-fill  { height: 100%; border-radius: 99px; transition: width .6s; }
+  .session-time { font-size: .75rem; color: var(--muted); width: 42px; text-align: right; flex-shrink: 0; }
+
+  /* Tip */
+  .tip-card { background: linear-gradient(135deg,#1a2a3a,#1a1f35); border-color: #253545; }
+  .tip-text { font-size: .85rem; line-height: 1.5; }
+
+  /* Timer */
+  .timer { font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-align: center; }
+  .timer-label { font-size: .72rem; color: var(--muted); text-align: center; margin-top: 4px; }
+
+  /* Footer */
+  .conn-bar {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .72rem; color: var(--muted);
+    padding: 10px 28px; border-top: 1px solid var(--border);
+  }
+  .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .conn-dot.on { background: var(--green); }
+
+  /* Summary overlay */
+  #summary-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.85); z-index: 100;
+    overflow-y: auto; padding: 40px 20px;
+  }
+  .summary-card {
+    max-width: 720px; margin: 0 auto;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px;
+  }
+  .summary-title    { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+  .summary-subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 24px; }
+  .summary-score-row {
+    display: flex; align-items: center; gap: 20px;
+    background: var(--surface); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 24px;
+  }
+  .summary-big-score { font-size: 3.5rem; font-weight: 900; line-height: 1; min-width: 90px; text-align: center; }
+  .summary-section  { margin-bottom: 22px; }
+  .summary-section h3 { font-size: .72rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .summary-items    { display: flex; flex-direction: column; gap: 8px; }
+  .summary-item     { display: flex; align-items: flex-start; gap: 10px; background: var(--surface); border-radius: var(--rsm); padding: 12px 14px; font-size: .88rem; line-height: 1.4; }
+  .summary-item .si-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .summary-item strong   { display: block; font-size: .82rem; margin-bottom: 3px; }
+  .summary-msg { text-align: center; font-size: 1rem; line-height: 1.6; color: var(--muted); margin: 20px 0 28px; font-style: italic; }
+  .btn-close {
+    display: block; width: 100%; padding: 14px; border: none;
+    border-radius: var(--radius); background: var(--accent);
+    color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer;
+  }
+  .btn-close:hover { opacity: .85; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="dot"></div>
+    NeuroFocus <span style="color:var(--accent);margin-left:4px">AI</span>
+  </div>
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="indicator" id="status-dot" style="background:var(--muted)"></div>
+      <span id="status-text">Conectando...</span>
+    </div>
+    <button id="btn-stop" onclick="requestStop()">⏹ Finalizar sesión</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Video -->
+  <div>
+    <div class="video-wrap">
+      <img id="webcam-img" alt="webcam">
+      <div class="video-placeholder" id="video-placeholder">
+        <div class="big">📷</div>
+        <div>Esperando conexión...</div>
+      </div>
+      <div class="vid-top" id="vid-top">
+        <div id="vid-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green)"></div>
+        <span id="state-label-video" style="color:var(--green)">ATENCION ALTA</span>
+      </div>
+      <div class="vid-bottom" id="vid-bottom">
+        <div class="score-bar-label">Nivel de atención: <span id="score-pct-label">0%</span></div>
+        <div class="score-bar-track">
+          <div class="score-bar-fill" id="score-bar" style="width:0%;background:var(--green)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Score ring -->
+    <div class="card">
+      <div class="card-title">Puntuación de sesión</div>
+      <div class="score-ring-wrap">
+        <svg width="90" height="90" viewBox="0 0 90 90">
+          <circle class="bg" cx="45" cy="45" r="36"/>
+          <circle class="fg" id="ring-fg" cx="45" cy="45" r="36"
+            stroke-dasharray="226" stroke-dashoffset="226" stroke="var(--green)"/>
+        </svg>
+        <div>
+          <div class="score-number" id="score-num" style="color:var(--green)">--</div>
+          <div class="score-sublabel">de 100 puntos</div>
+          <div class="score-desc" id="score-desc">Esperando datos...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div class="card" style="padding:16px 18px">
+      <div class="card-title" style="text-align:center">Duración</div>
+      <div class="timer" id="timer">00:00</div>
+      <div class="timer-label">tiempo de sesión</div>
+    </div>
+
+    <!-- Grafica tiempo real -->
+    <div class="card" style="padding:14px 18px">
+      <div class="card-title">📈 Score en tiempo real</div>
+      <canvas id="score-chart" height="90" style="width:100%;display:block"></canvas>
+    </div>
+
+    <!-- Ojos -->
+    <div class="card">
+      <div class="card-title">👁 Análisis ocular</div>
+      <div class="metric-row">
+        <span class="metric-label">Apertura ocular</span>
+        <div class="mini-bar-wrap"><div class="mini-bar-track"><div class="mini-bar-fill" id="ear-bar" style="width:0%;background:var(--blue)"></div></div></div>
+        <span class="metric-val" id="ear-val">--</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Parp./min</span>
+        <div class="mini-bar-wrap"><div class="mini-bar-track"><div class="mini-bar-fill" id="blink-bar" style="width:0%;background:var(--yellow)"></div></div></div>
+        <span class="metric-val" id="blink-val">--</span>
+      </div>
+      <div class="metric-row" style="margin-top:4px">
+        <span class="metric-label">Parpadeos totales</span>
+        <span class="metric-val" id="blinks-total">--</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Fatiga visual</span>
+        <span class="tag tag-muted" id="fatigue-tag">--</span>
+      </div>
+    </div>
+
+    <!-- Cabeza -->
+    <div class="card">
+      <div class="card-title">🧭 Orientación de cabeza</div>
+      <div class="metric-row">
+        <span class="metric-label">Giro lateral</span>
+        <div class="mini-bar-wrap"><div class="mini-bar-track"><div class="mini-bar-fill" id="yaw-bar" style="width:0%;background:var(--blue)"></div></div></div>
+        <span class="metric-val" id="yaw-val">--</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Inclinación</span>
+        <div class="mini-bar-wrap"><div class="mini-bar-track"><div class="mini-bar-fill" id="pitch-bar" style="width:0%;background:var(--blue)"></div></div></div>
+        <span class="metric-val" id="pitch-val">--</span>
+      </div>
+      <div class="metric-row" style="margin-top:4px">
+        <span class="metric-label">Mirando pantalla</span>
+        <span class="tag tag-muted" id="forward-tag">--</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Distracción</span>
+        <span class="tag tag-muted" id="distract-tag">--</span>
+      </div>
+    </div>
+
+    <!-- Tip -->
+    <div class="card tip-card">
+      <div class="card-title">💡 Consejo</div>
+      <div class="tip-text" id="tip-text">Espera a que comience la sesión...</div>
+    </div>
+
+    <!-- Sesion -->
+    <div class="card">
+      <div class="card-title">📊 Distribución de sesión</div>
+      <div class="session-item">
+        <div class="session-dot" style="background:var(--green)"></div>
+        <div class="session-info">
+          <div class="session-name">Atención alta</div>
+          <div class="session-bar-track"><div class="session-bar-fill" id="bar-high" style="width:0%;background:var(--green)"></div></div>
+        </div>
+        <div class="session-time" id="time-high">00:00</div>
+      </div>
+      <div class="session-item">
+        <div class="session-dot" style="background:var(--yellow)"></div>
+        <div class="session-info">
+          <div class="session-name">Atención media</div>
+          <div class="session-bar-track"><div class="session-bar-fill" id="bar-mid" style="width:0%;background:var(--yellow)"></div></div>
+        </div>
+        <div class="session-time" id="time-mid">00:00</div>
+      </div>
+      <div class="session-item">
+        <div class="session-dot" style="background:var(--red)"></div>
+        <div class="session-info">
+          <div class="session-name">Distracción</div>
+          <div class="session-bar-track"><div class="session-bar-fill" id="bar-dist" style="width:0%;background:var(--red)"></div></div>
+        </div>
+        <div class="session-time" id="time-dist">00:00</div>
+      </div>
+      <div class="session-item">
+        <div class="session-dot" style="background:#f59e0b"></div>
+        <div class="session-info">
+          <div class="session-name">Fatiga</div>
+          <div class="session-bar-track"><div class="session-bar-fill" id="bar-fat" style="width:0%;background:#f59e0b"></div></div>
+        </div>
+        <div class="session-time" id="time-fat">00:00</div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+</div><!-- /main -->
+
+<div class="conn-bar">
+  <div class="conn-dot" id="conn-dot"></div>
+  <span id="conn-label">Sin conexión</span>
+</div>
+
+<!-- SUMMARY OVERLAY -->
+<div id="summary-overlay">
+  <div class="summary-card" id="summary-content">
+    <div style="text-align:center;padding:40px;color:var(--muted)">
+      <div class="spinner"></div>
+      <div>Generando análisis con IA...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Tips ─────────────────────────────────────────────────────
+const TIPS = {
+  "Atencion alta":  ["¡Excelente! Estás en modo de flujo total.","Concentración óptima — ¡sigue así!","Tu mente está completamente enfocada."],
+  "Atencion media": ["Intenta eliminar distracciones del entorno.","Toma un sorbo de agua para refrescarte.","Divide la tarea en pasos más pequeños."],
+  "Distraccion":    ["Vuelve la mirada a la pantalla.","Cierra pestañas o apps que no necesitas.","Tómate 2 minutos de pausa y regresa."],
+  "Fatiga":         ["¡Descansa! Toma una pausa de 5-10 minutos.","Regla 20-20-20: mira algo lejano 20 segundos.","Parpadea conscientemente varias veces."],
+  "Sin rostro":     ["Posiciónate frente a la cámara.","Asegúrate de tener buena iluminación."],
+};
+let tipIndex = 0, tipTimer = Date.now();
+let sessionStart = null, timerInterval = null;
+
+function fmtTime(s) { const m=Math.floor(s/60),ss=Math.floor(s%60); return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
+function scoreCol(s) { return s>=70?'var(--green)':s>=40?'var(--yellow)':'var(--red)'; }
+function stateCol(l) { return l.includes("alta")?'var(--green)':l.includes("media")?'var(--yellow)':'var(--muted)' === l?'var(--muted)':'var(--red)'; }
+function scoreDesc(s) { return s>=85?"¡Concentración sobresaliente!":s>=70?"Muy buena atención":s>=50?"Atención moderada":s>=30?"Necesitas refocalizarte":"Alta distracción o fatiga"; }
+
+// ── Chart ────────────────────────────────────────────────────
+const chartCanvas = document.getElementById('score-chart');
+const chartCtx    = chartCanvas.getContext('2d');
+let   chartData   = [];
+
+function drawChart(data) {
+  chartData = data;
+  const W = chartCanvas.offsetWidth || 260;
+  const H = 90;
+  chartCanvas.width  = W;
+  chartCanvas.height = H;
+  chartCtx.clearRect(0, 0, W, H);
+
+  if (!data || data.length < 2) {
+    chartCtx.fillStyle = 'var(--muted,#6b7280)';
+    chartCtx.font = '11px sans-serif';
+    chartCtx.textAlign = 'center';
+    chartCtx.fillText('Esperando datos...', W/2, H/2+4);
+    return;
+  }
+
+  const pad = {top:6, right:6, bottom:18, left:28};
+  const gW = W - pad.left - pad.right;
+  const gH = H - pad.top  - pad.bottom;
+  const minT = data[0].t, maxT = data[data.length-1].t;
+  const rangeT = Math.max(maxT - minT, 1);
+  const toX = t => pad.left + ((t - minT) / rangeT) * gW;
+  const toY = s => pad.top  + (1 - s / 100) * gH;
+
+  // Grid
+  chartCtx.strokeStyle = '#252a45';
+  chartCtx.lineWidth = 1;
+  [0, 50, 100].forEach(v => {
+    const y = toY(v);
+    chartCtx.beginPath(); chartCtx.moveTo(pad.left, y); chartCtx.lineTo(W-pad.right, y); chartCtx.stroke();
+    chartCtx.fillStyle = '#6b7280'; chartCtx.font = '9px sans-serif'; chartCtx.textAlign = 'right';
+    chartCtx.fillText(v, pad.left-3, y+3);
+  });
+
+  // Gradient fill
+  const grad = chartCtx.createLinearGradient(0, pad.top, 0, H-pad.bottom);
+  grad.addColorStop(0, 'rgba(108,99,255,0.4)');
+  grad.addColorStop(1, 'rgba(108,99,255,0.02)');
+  chartCtx.beginPath();
+  data.forEach((p,i) => i===0 ? chartCtx.moveTo(toX(p.t),toY(p.s)) : chartCtx.lineTo(toX(p.t),toY(p.s)));
+  chartCtx.lineTo(toX(data[data.length-1].t), H-pad.bottom);
+  chartCtx.lineTo(toX(data[0].t), H-pad.bottom);
+  chartCtx.closePath();
+  chartCtx.fillStyle = grad;
+  chartCtx.fill();
+
+  // Line
+  chartCtx.beginPath();
+  chartCtx.strokeStyle = '#6c63ff'; chartCtx.lineWidth = 2; chartCtx.lineJoin = 'round';
+  data.forEach((p,i) => i===0 ? chartCtx.moveTo(toX(p.t),toY(p.s)) : chartCtx.lineTo(toX(p.t),toY(p.s)));
+  chartCtx.stroke();
+
+  // Last dot
+  const last = data[data.length-1];
+  chartCtx.beginPath(); chartCtx.arc(toX(last.t), toY(last.s), 4, 0, Math.PI*2);
+  chartCtx.fillStyle = '#6c63ff'; chartCtx.fill();
+  chartCtx.strokeStyle = '#fff'; chartCtx.lineWidth = 1.5; chartCtx.stroke();
+
+  // X labels
+  chartCtx.fillStyle = '#6b7280'; chartCtx.font = '9px sans-serif'; chartCtx.textAlign = 'center';
+  const total = maxT - minT;
+  const step  = total > 120 ? 60 : total > 30 ? 30 : 10;
+  for (let t = minT; t <= maxT; t += step) {
+    chartCtx.fillText(fmtTime(t), toX(t), H-4);
+  }
+}
+
+window.addEventListener('resize', () => { if (chartData.length) drawChart(chartData); });
+
+// ── UI update ────────────────────────────────────────────────
+function updateUI(data) {
+  const img = document.getElementById('webcam-img');
+  if (data.frame) {
+    img.src = 'data:image/jpeg;base64,' + data.frame;
+    img.style.display = 'block';
+    document.getElementById('video-placeholder').style.display = 'none';
+  }
+
+  if (!data.face_detected || !data.classification) {
+    document.getElementById('vid-top').style.display = 'flex';
+    document.getElementById('state-label-video').textContent = 'SIN ROSTRO';
+    document.getElementById('state-label-video').style.color = 'var(--muted)';
+    document.getElementById('vid-dot').style.background = 'var(--muted)';
+    document.getElementById('vid-bottom').style.display = 'none';
+    document.getElementById('status-text').textContent = 'Sin rostro';
+    document.getElementById('status-dot').style.background = 'var(--muted)';
+    return;
+  }
+
+  const cls = data.classification, eye = data.eye, head = data.head;
+
+  // Session timer
+  if (!sessionStart) {
+    sessionStart = Date.now() - cls.session_seconds * 1000;
+    if (!timerInterval) timerInterval = setInterval(() => {
+      document.getElementById('timer').textContent = fmtTime((Date.now()-sessionStart)/1000);
+    }, 500);
+  }
+
+  // State
+  const col = stateCol(cls.state_label);
+  document.getElementById('vid-top').style.display = 'flex';
+  document.getElementById('vid-bottom').style.display = 'block';
+  document.getElementById('state-label-video').textContent = cls.state_label.toUpperCase();
+  document.getElementById('state-label-video').style.color = col;
+  document.getElementById('vid-dot').style.background = col;
+  document.getElementById('status-text').textContent = cls.state_label.toUpperCase();
+  document.getElementById('status-dot').style.background = col;
+
+  // Score bar on video
+  document.getElementById('score-pct-label').textContent = cls.score + '%';
+  const sb = document.getElementById('score-bar');
+  sb.style.width = cls.score + '%'; sb.style.background = scoreCol(cls.score);
+
+  // Score ring
+  const offset = 226 - (cls.score / 100 * 226);
+  const ring = document.getElementById('ring-fg');
+  ring.style.strokeDashoffset = offset; ring.style.stroke = scoreCol(cls.score);
+  document.getElementById('score-num').textContent = cls.score + '%';
+  document.getElementById('score-num').style.color = scoreCol(cls.score);
+  document.getElementById('score-desc').textContent = scoreDesc(cls.score);
+
+  // Eye metrics
+  document.getElementById('ear-bar').style.width   = Math.min(100, Math.round(eye.ear*300)) + '%';
+  document.getElementById('ear-val').textContent    = eye.ear.toFixed(2);
+  document.getElementById('blink-bar').style.width  = Math.min(100, eye.blink_rate*2) + '%';
+  document.getElementById('blink-val').textContent  = eye.blink_rate;
+  document.getElementById('blinks-total').textContent = eye.total_blinks;
+  const ft = document.getElementById('fatigue-tag');
+  ft.textContent = eye.fatigue_signal ? '⚠ Sí' : '✓ No';
+  ft.className   = 'tag ' + (eye.fatigue_signal ? 'tag-red' : 'tag-green');
+
+  // Head metrics
+  document.getElementById('yaw-bar').style.width   = Math.min(100, Math.round(Math.abs(head.yaw)/25*100)) + '%';
+  document.getElementById('pitch-bar').style.width = Math.min(100, Math.round(Math.abs(head.pitch)/20*100)) + '%';
+  document.getElementById('yaw-val').textContent   = head.yaw.toFixed(0) + '°';
+  document.getElementById('pitch-val').textContent = head.pitch.toFixed(0) + '°';
+  const fw = document.getElementById('forward-tag');
+  fw.textContent = head.looking_forward ? '✓ Sí' : '✗ No';
+  fw.className   = 'tag ' + (head.looking_forward ? 'tag-green' : 'tag-yellow');
+  const dt = document.getElementById('distract-tag');
+  dt.textContent = head.distraction_signal ? '⚠ Sí' : '✓ No';
+  dt.className   = 'tag ' + (head.distraction_signal ? 'tag-red' : 'tag-muted');
+
+  // Session bars
+  const total = Math.max(1, cls.session_seconds);
+  const dur = cls.state_durations;
+  [['high','Atencion alta'],['mid','Atencion media'],['dist','Distraccion'],['fat','Fatiga']].forEach(([k,label]) => {
+    const s = dur[label] || 0;
+    document.getElementById('bar-' + k).style.width = Math.min(100, s/total*100) + '%';
+    document.getElementById('time-' + k).textContent = fmtTime(s);
+  });
+
+  // Tip
+  if (Date.now() - tipTimer > 8000) { tipIndex++; tipTimer = Date.now(); }
+  const tips = TIPS[cls.state_label] || TIPS['Sin rostro'];
+  document.getElementById('tip-text').textContent = tips[tipIndex % tips.length];
+
+  // Chart
+  if (data.score_history && data.score_history.length > 1) {
+    drawChart(data.score_history);
+  }
+}
+
+// ── Stop button ───────────────────────────────────────────────
+function requestStop() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  document.getElementById('btn-stop').textContent = '⏳ Finalizando...';
+  document.getElementById('btn-stop').style.opacity = '0.6';
+  document.getElementById('btn-stop').style.pointerEvents = 'none';
+  ws.send(JSON.stringify({ cmd: 'stop' }));
+}
+
+function setConnected(on) {
+  const btn = document.getElementById('btn-stop');
+  btn.style.opacity       = on ? '1'    : '0.4';
+  btn.style.pointerEvents = on ? 'auto' : 'none';
+}
+
+// ── WebSocket ────────────────────────────────────────────────
+let ws = null, reconnectTimer = null;
+
+function connect() {
+  if (ws) { try { ws.close(); } catch(_){} }
+  ws = new WebSocket('ws://localhost:8765');
+
+  ws.onopen = () => {
+    clearTimeout(reconnectTimer);
+    document.getElementById('conn-dot').className = 'conn-dot on';
+    document.getElementById('conn-label').textContent = 'Conectado a NeuroFocus AI';
+    document.getElementById('status-text').textContent = 'Conectado';
+    document.getElementById('status-dot').style.background = 'var(--green)';
+    setConnected(true);
+  };
+
+  ws.onmessage = (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'summary') {
+        document.getElementById('summary-content').innerHTML = data.html;
+        document.getElementById('summary-overlay').style.display = 'block';
+      } else {
+        updateUI(data);
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('conn-dot').className = 'conn-dot';
+    document.getElementById('conn-label').textContent = 'Sin conexión — reintentando...';
+    setConnected(false);
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+connect();
+</script>
+</body>
+</html>
