@@ -1,17 +1,58 @@
-# entorno virtual
+# Entornos virtuales
 venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
-# archivos temporales de Python
+# Archivos temporales de Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*$py.class
 
-# configuraciones del editor
+# Variables de entorno
+.env
+.envrc
+
+# Logs
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Cachés y pruebas
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Configuración de editores
 .vscode/
+.idea/
 
-# archivos del sistema
+# Archivos del sistema
 .DS_Store
 Thumbs.db
 
-# logs
-*.log
+# Build / distribución
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# Otros
+.Python
+.cursorignore
+.cursorindexingignore
